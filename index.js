@@ -5,7 +5,7 @@ const toMarkdown = require('to-markdown')
 
 const Authorization = `Bearer ${process.argv[2]}`
 
-function fetchPrivateFolder (error, response, body) {
+const fetchPrivateFolder = (error, response, body) => {
   if (!error && response.statusCode == 200) {
     const info = JSON.parse(body)
     request({
@@ -15,7 +15,7 @@ function fetchPrivateFolder (error, response, body) {
   }
 }
 
-function fetchThreads (folder_id) {
+const fetchThreads = (folder_id) => {
   request({
     url: `https://platform.quip.com/1/folders/${folder_id}`,
     headers: { Authorization }
@@ -32,7 +32,7 @@ function fetchThreads (folder_id) {
   })
 }
 
-function fetchDocs (err, res, body, folder_name = 'output') {
+const fetchDocs = (err, res, body, folder_name = 'output') => {
   const { children } = JSON.parse(body)
   const ids = children
     .filter(({ thread_id }) => !!thread_id)
