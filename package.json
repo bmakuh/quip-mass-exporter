@@ -1,0 +1,31 @@
+{
+  "name": "quip-mass-exporter",
+  "version": "0.1.0",
+  "description": "A tool to export all your documents at once from Quip app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bmakuh/quip-mass-exporter.git"
+  },
+  "keywords": [
+    "quip",
+    "app",
+    "exporter",
+    "tool"
+  ],
+  "author": "Ben Makuh",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bmakuh/quip-mass-exporter/issues"
+  },
+  "homepage": "https://github.com/bmakuh/quip-mass-exporter#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "lodash": "^4.17.4",
+    "request": "^2.81.0",
+    "to-markdown": "^3.0.4"
+  }
+}
