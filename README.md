@@ -10,7 +10,8 @@ The popular [Quip app](https://quip.com/) is great for note-taking and documents
 
 ## Use
 1. Generate a personal access token for the Quip API here: https://quip.com/api/personal-token
-1. Run `node index.js <token>`
+1. Run `node index.js '<token>'`
+1. This will dump all your documents into an `output/` folder
 
 ## License
 Copyright 2017 Ben Makuh
