@@ -1,72 +1,97 @@
-const request = require('request')
-const { forEach } = require('lodash')
+const axios = require('axios')
+const { curry, forEach } = require('lodash')
 const fs = require('fs')
 const toMarkdown = require('to-markdown')
 
-const Authorization = `Bearer ${process.argv[2]}`
+const headers = { Authorization: `Bearer ${process.argv[2]}` }
+const fetch = (url, opts = {}) =>
+  axios(url, Object.assign({}, { headers }, opts))
 
-const fetchPrivateFolder = (error, response, body) => {
-  if (!error && response.statusCode == 200) {
-    const info = JSON.parse(body)
-    request({
-      url: `https://platform.quip.com/1/folders/${info.private_folder_id}`,
-      headers: { Authorization }
-    }, fetchDocs)
-  }
+const logErr = (err) => {
+  console.error(err)
+  process.exitCode = 1
+  return
 }
 
-const fetchThreads = (folder_id) => {
-  request({
-    url: `https://platform.quip.com/1/folders/${folder_id}`,
-    headers: { Authorization }
-  }, (err, res, body) => {
-    forEach(JSON.parse(body), (folder) => {
-      if (!folder.title) return
+// fetchPrivateFolder :: (number) => Promise<*>
+const fetchPrivateFolder = (id) =>
+  fetch(`https://platform.quip.com/1/folders/${id}`)
 
-      fs.mkdirSync(`output/${folder.title}`, (err) => {
-        if (err) throw err
-        console.log(`successfully created output/${folder.title}`)
-      })
-      fetchDocs(err, res, body, folder.title)
-    })
+// fetchDocs :: (Array<number>, string) => Promise<*>
+const fetchDocs = (children, folderName = 'output') => {
+  fs.mkdir(folderName, 0o777, (err) => {
+    if (err) return logErr(`❌ Failed to create folder ${folderName}. ${err}`)
+
+    console.log(`🗂 ${folderName} created successfully`)
   })
-}
 
-const fetchDocs = (err, res, body, folder_name = 'output') => {
-  const { children } = JSON.parse(body)
   const ids = children
     .filter(({ thread_id }) => !!thread_id)
     .map(({ thread_id }) => thread_id)
     .join(',')
 
-  const folder_ids = children
+  const folderIds = children
     .filter(({ folder_id }) => !!folder_id)
     .map(({ folder_id }) => folder_id)
 
-  forEach(folder_ids, fetchThreads)
+  forEach(folderIds, (folderId) => fetchThreads(folderId, folderName))
 
-  request({
-    url: `https://platform.quip.com/1/threads/?ids=${ids}`,
-    headers: { Authorization }
-  }, (err, res, body) => {
-    forEach(JSON.parse(body), (({ thread, html }) => {
-      const file = thread.title.replace(/\//g, '')
-      const path = folder_name === 'output'
-        ? folder_name
-        : `output/${folder_name}`
-      fs.writeFile(`${path}/${file}.html`, html, (err) => {
-        if (err) throw err
-        console.log(`${path}/${file}.html saved successfully`)
-      })
-      fs.writeFile(`${path}/${file}.md`, toMarkdown(html), (err) => {
-        if (err) throw err
-        console.log(`${path}/${file}.md saved successfully`)
-      })
-    }))
-  })
+  return fetch(`https://platform.quip.com/1/threads/?ids=${ids}`)
+    .then(writeFiles(folderName))
 }
 
-request({
-  url: 'https://platform.quip.com/1/users/current',
-  headers: { Authorization }
-}, fetchPrivateFolder)
+// fetchThreads :: (number, string) => Promise<*>
+const fetchThreads = (folderId, parentDir) => {
+  return fetch(`https://platform.quip.com/1/folders/${folderId}`)
+    .then(({ data }) => {
+      forEach(data, (folder) => {
+        if (!folder.title) return
+
+        fetchDocs(data.children, `${parentDir}/${folder.title}`)
+      })
+    })
+}
+
+// writeFiles :: Object => void
+const writeFiles = curry((folderName, { data }) => {
+  forEach(data, (({ thread, html }) => {
+    const file = thread.title.replace(/\//g, '')
+    const fileName = `${folderName}/${file}`
+
+    fs.writeFile(`${fileName}.html`, html, (err) => {
+      if (err) return logErr(`❌ Failed to save ${fileName}.html. ${err}`)
+
+      console.log(`✅ ${fileName}.html saved successfully`)
+    })
+
+    fs.writeFile(`${fileName}.md`, toMarkdown(html), (err) => {
+      if (err) return logErr(`❌ Failed to save ${fileName}.md. ${err}`)
+
+      console.log(`✅ ${fileName}.md saved successfully`)
+    })
+  }))
+})
+
+// main :: () => void
+const main = () => {
+  if (!process.argv[2]) {
+    console.log('❌ Please provide your Quip API token. Exiting.')
+    process.exitCode = 1
+    return
+  }
+
+  return fetch('https://platform.quip.com/1/users/current')
+    .then((res) => {
+      return new Promise((resolve, reject) => {
+        if (res.status !== 200) return reject(`❌ Error: ${res.statusText}`)
+
+        resolve(res.data.private_folder_id)
+      })
+    })
+    .then(fetchPrivateFolder)
+    .then(({ data: { children } }) => children)
+    .then(fetchDocs)
+    .catch(logErr)
+}
+
+main()
