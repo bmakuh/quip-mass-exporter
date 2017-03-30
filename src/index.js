@@ -3,10 +3,15 @@ const { curry, forEach } = require('lodash')
 const fs = require('fs')
 const toMarkdown = require('to-markdown')
 
+// headers :: { Authorization: string }
 const headers = { Authorization: `Bearer ${process.argv[2]}` }
-const fetch = (url, opts = {}) =>
-  axios(url, Object.assign({}, { headers }, opts))
 
+// fetch :: (string, ?Object) => Promise<*>
+const fetch = (url, opts = {}, deps = { axios }) => {
+  return deps.axios(url, Object.assign({}, { headers }, opts))
+}
+
+// logErr :: string => void
 const logErr = (err) => {
   console.error(err)
   process.exitCode = 1
@@ -20,7 +25,9 @@ const fetchPrivateFolder = (id) =>
 // fetchDocs :: (Array<number>, string) => Promise<*>
 const fetchDocs = (children, folderName = 'output') => {
   fs.mkdir(folderName, 0o777, (err) => {
-    if (err) return logErr(`❌ Failed to create folder ${folderName}. ${err}`)
+    if (err) {
+      return logErr(`❌ Failed to create folder ${folderName}. ${err}`)
+    }
 
     console.log(`🗂 ${folderName} created successfully`)
   })
@@ -95,3 +102,13 @@ const main = () => {
 }
 
 main()
+
+module.exports = {
+  fetch,
+  fetchDocs,
+  fetchPrivateFolder,
+  fetchThreads,
+  logErr,
+  main,
+  writeFiles
+}
