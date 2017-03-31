@@ -19,11 +19,26 @@ const logErr = (err) => {
 }
 
 // fetchPrivateFolder :: (number) => Promise<*>
-const fetchPrivateFolder = (id) =>
-  fetch(`https://platform.quip.com/1/folders/${id}`)
+const fetchPrivateFolder = (id, deps = { fetch }) => {
+  const { fetch } = deps
 
-// fetchDocs :: (Array<number>, string) => Promise<*>
-const fetchDocs = (children, folderName = 'output') => {
+  return fetch(`https://platform.quip.com/1/folders/${id}`)
+}
+
+// type Child = { folder_id: number }
+// fetchDocs :: (Array<Child>, string) => Promise<*>
+const fetchDocs = (
+  children,
+  folderName = 'output',
+  deps = {
+    fs,
+    fetch,
+    fetchThreads,
+    writeFiles
+  }
+) => {
+  const { fs, fetch, fetchThreads, writeFiles } = deps
+
   fs.mkdir(folderName, 0o777, (err) => {
     if (err) {
       return logErr(`❌ Failed to create folder ${folderName}. ${err}`)
@@ -48,8 +63,17 @@ const fetchDocs = (children, folderName = 'output') => {
 }
 
 // fetchThreads :: (number, string) => Promise<*>
-const fetchThreads = (folderId, parentDir) => {
-  return fetch(`https://platform.quip.com/1/folders/${folderId}`)
+const fetchThreads = (
+  folderId,
+  parentDir,
+  deps = {
+    fetchDocs,
+    fetchPrivateFolder
+  }
+) => {
+  const { fetchDocs, fetchPrivateFolder } = deps
+
+  return fetchPrivateFolder(folderId)
     .then(({ data }) => {
       forEach(data, (folder) => {
         if (!folder.title) return
@@ -59,8 +83,14 @@ const fetchThreads = (folderId, parentDir) => {
     })
 }
 
-// writeFiles :: Object => void
-const writeFiles = curry((folderName, { data }) => {
+// type Thread = {
+//   thread: { title: string },
+//   html: string
+// }
+// writeFiles :: string => Thread => void
+const writeFiles = (folderName) => ({ data }, deps = { fs, toMarkdown }) => {
+  const { fs } = deps
+
   forEach(data, (({ thread, html }) => {
     const file = thread.title.replace(/\//g, '')
     const fileName = `${folderName}/${file}`
@@ -77,7 +107,7 @@ const writeFiles = curry((folderName, { data }) => {
       console.log(`✅ ${fileName}.md saved successfully`)
     })
   }))
-})
+}
 
 // main :: () => void
 const main = () => {
@@ -100,8 +130,6 @@ const main = () => {
     .then(fetchDocs)
     .catch(logErr)
 }
-
-main()
 
 module.exports = {
   fetch,
