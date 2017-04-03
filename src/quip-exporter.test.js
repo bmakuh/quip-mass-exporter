@@ -115,7 +115,7 @@ describe('Quip exporter', () => {
   })
 
   describe('main()', () => {
-    const makeDeps = (props) => {
+    const makeDeps = (otherDeps) => {
       const deps = {
         console: { log: sinon.spy() },
         fetch: () => Promise.resolve({
@@ -128,7 +128,7 @@ describe('Quip exporter', () => {
         process: { argv: ['foo', 'bar', undefined] }
       }
 
-      const overwrittenDeps = Object.assign({}, deps, props)
+      const overwrittenDeps = Object.assign({}, deps, otherDeps)
 
       sinon.spy(overwrittenDeps, 'fetch')
       sinon.spy(overwrittenDeps, 'fetchDocs')
@@ -145,9 +145,9 @@ describe('Quip exporter', () => {
       deps.logErr.reset()
     }
 
-    it('quits immediately without an API key', async () => {
+    it('quits immediately without an API key', () => {
       const deps = makeDeps()
-      await main(deps)
+      main(deps)
 
       expect(deps.console.log).to.have.been.calledOnce
       expect(deps.process.exitCode).to.equal(1)
@@ -168,11 +168,13 @@ describe('Quip exporter', () => {
     })
 
     it('logs an error if anything fails', async () => {
-      const deps = makeDeps({ fetchPrivateFolder: () => Promise.reject(new Error('oh noes')) })
+      const deps = makeDeps({
+        fetchPrivateFolder: () => Promise.reject(),
+        process: { argv: [1, 2, 3] }
+      })
       await main(deps)
 
       expect(deps.fetchPrivateFolder).to.have.been.called
-      expect(deps.fetchDocs).to.have.been.called
       expect(deps.logErr).to.have.been.calledOnce
 
       resetDeps(deps)
