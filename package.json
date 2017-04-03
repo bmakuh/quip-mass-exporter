@@ -1,11 +1,10 @@
 {
   "name": "quip-mass-exporter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A tool to export all your documents at once from Quip app",
   "main": "index.js",
   "scripts": {
-    "build": "yarn test && gear compile src/ -d lib/",
-    "test": "gear type-check src/"
+    "test": "NODE_ENV=test mocha --require config/tests.js --full-trace --recursive src/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -28,5 +27,12 @@
     "fs": "^0.0.1-security",
     "lodash": "^4.17.4",
     "to-markdown": "^3.0.4"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0",
+    "rootpath": "^0.1.2",
+    "sinon": "^2.1.0",
+    "sinon-chai": "^2.9.0"
   }
 }
