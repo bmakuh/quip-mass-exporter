@@ -91,12 +91,91 @@ describe('Quip exporter', () => {
   })
 
   describe('writeFiles()', () => {
-    it('takes a folderName and a thread and saves it as HTML and Markdown', () => {
+    it('takes a folderName and a file and saves it as HTML and Markdown', () => {
+      const folderName = 'folder'
+      const threads = {
+        data: {
+          1: {
+            thread: { title: 'neat doc' },
+            html: '<h1>so neat</h1>'
+          }
+        }
+      }
+      const deps = {
+        fs: { writeFile: sinon.spy() },
+        toMarkdown: sinon.spy()
+      }
 
+      writeFiles(folderName)(threads, deps)
+
+      expect(deps.fs.writeFile).to.have.been.calledTwice
+      expect(deps.toMarkdown)
+        .to.have.been.calledWith(threads.data[1].html)
     })
   })
 
   describe('main()', () => {
+    const makeDeps = (props) => {
+      const deps = {
+        console: { log: sinon.spy() },
+        fetch: () => Promise.resolve({
+          data: { private_folder_id: 15 },
+          status: 200
+        }),
+        fetchDocs: () => Promise.resolve(),
+        fetchPrivateFolder: () => Promise.resolve({ data: { children: 'foo' } }),
+        logErr: sinon.spy(),
+        process: { argv: ['foo', 'bar', undefined] }
+      }
 
+      const overwrittenDeps = Object.assign({}, deps, props)
+
+      sinon.spy(overwrittenDeps, 'fetch')
+      sinon.spy(overwrittenDeps, 'fetchDocs')
+      sinon.spy(overwrittenDeps, 'fetchPrivateFolder')
+
+      return overwrittenDeps
+    }
+
+    const resetDeps = (deps) => {
+      deps.console.log.reset()
+      deps.fetch.reset()
+      deps.fetchDocs.reset()
+      deps.fetchPrivateFolder.reset()
+      deps.logErr.reset()
+    }
+
+    it('quits immediately without an API key', async () => {
+      const deps = makeDeps()
+      await main(deps)
+
+      expect(deps.console.log).to.have.been.calledOnce
+      expect(deps.process.exitCode).to.equal(1)
+      expect(deps.fetch).to.not.have.been.called
+
+      resetDeps(deps)
+    })
+
+    it(`fetches the user's private folder id, the private folder, and all the docs in that folder`, async () => {
+      const deps = makeDeps({ process: { argv: [1, 2, 3] } })
+      await main(deps)
+
+      expect(deps.fetchPrivateFolder).to.have.been.calledWith(15)
+      expect(deps.fetchDocs).to.have.been.calledWith('foo')
+      expect(deps.logErr).to.not.have.been.called
+
+      resetDeps(deps)
+    })
+
+    it('logs an error if anything fails', async () => {
+      const deps = makeDeps({ fetchPrivateFolder: () => Promise.reject(new Error('oh noes')) })
+      await main(deps)
+
+      expect(deps.fetchPrivateFolder).to.have.been.called
+      expect(deps.fetchDocs).to.have.been.called
+      expect(deps.logErr).to.have.been.calledOnce
+
+      resetDeps(deps)
+    })
   })
 })

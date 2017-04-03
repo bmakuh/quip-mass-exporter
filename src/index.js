@@ -1,5 +1,5 @@
 const axios = require('axios')
-const { curry, forEach } = require('lodash')
+const { forEach } = require('lodash')
 const fs = require('fs')
 const toMarkdown = require('to-markdown')
 
@@ -83,13 +83,17 @@ const fetchThreads = (
     })
 }
 
-// type Thread = {
-//   thread: { title: string },
-//   html: string
+// type Threads = {
+//   data: {
+//     [Id]: {
+//       thread: { title: string },
+//       html: string
+//     }
+//   }
 // }
-// writeFiles :: string => Thread => void
+// writeFiles :: string => Threads => void
 const writeFiles = (folderName) => ({ data }, deps = { fs, toMarkdown }) => {
-  const { fs } = deps
+  const { fs, toMarkdown } = deps
 
   forEach(data, (({ thread, html }) => {
     const file = thread.title.replace(/\//g, '')
@@ -109,8 +113,26 @@ const writeFiles = (folderName) => ({ data }, deps = { fs, toMarkdown }) => {
   }))
 }
 
-// main :: () => void
-const main = () => {
+// main :: () => Promise<*>
+const main = (
+  deps = {
+    console,
+    fetch,
+    fetchDocs,
+    fetchPrivateFolder,
+    logErr,
+    process
+  }
+) => {
+  const {
+    console,
+    fetch,
+    fetchDocs,
+    fetchPrivateFolder,
+    logErr,
+    process
+  } = deps
+
   if (!process.argv[2]) {
     console.log('❌ Please provide your Quip API token. Exiting.')
     process.exitCode = 1
