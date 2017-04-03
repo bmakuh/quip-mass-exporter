@@ -1,6 +1,6 @@
 {
   "name": "quip-mass-exporter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A tool to export all your documents at once from Quip app",
   "main": "index.js",
   "scripts": {
